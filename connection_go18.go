@@ -14,6 +14,8 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+
+	"fmt"
 )
 
 // Ping implements driver.Pinger interface
@@ -66,13 +68,13 @@ func (mc *mysqlConn) QueryContext(ctx context.Context, query string, args []driv
 	}
 
 	if err := mc.watchCancel(ctx); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("watch cancel: %s", err)
 	}
 
 	rows, err := mc.query(query, dargs)
 	if err != nil {
 		mc.finish()
-		return nil, err
+		return nil, fmt.Errorf("query: %s", err)
 	}
 	rows.finish = mc.finish
 	return rows, err
@@ -149,6 +151,7 @@ func (mc *mysqlConn) watchCancel(ctx context.Context) error {
 	if mc.watching {
 		// Reach here if canceled,
 		// so the connection is already invalid
+		fmt.Println("cleaning up mc")
 		mc.cleanup()
 		return nil
 	}
@@ -181,12 +184,14 @@ func (mc *mysqlConn) startWatcher() {
 			var ctx mysqlContext
 			select {
 			case ctx = <-watcher:
+				fmt.Println("assigning context")
 			case <-mc.closech:
 				return
 			}
 
 			select {
 			case <-ctx.Done():
+				fmt.Println("context is done, cancelling: %s", ctx.Err())
 				mc.cancel(ctx.Err())
 			case <-finished:
 			case <-mc.closech:
