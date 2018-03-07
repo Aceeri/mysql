@@ -184,7 +184,6 @@ func (mc *mysqlConn) startWatcher() {
 			var ctx mysqlContext
 			select {
 			case ctx = <-watcher:
-				fmt.Println("assigning context")
 			case <-mc.closech:
 				return
 			}
